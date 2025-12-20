@@ -1,0 +1,66 @@
+############################
+# Go Build Artifacts
+############################
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Build artifacts
+*.out
+*.coverprofile
+coverage.*
+profile.cov
+
+# Dependency directories (uncomment if you vendor modules)
+# vendor/
+
+############################
+# Go Modules Workspace
+############################
+
+go.work
+go.work.sum
+
+############################
+# Environment Files
+############################
+
+.env
+*.env
+.env.*
+
+############################
+# IntelliJ IDEA / GoLand
+############################
+
+.idea/
+*.iml
+
+############################
+# VS Code (optional)
+############################
+
+# .vscode/
+
+############################
+# OS Files (Windows / macOS / Linux)
+############################
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
