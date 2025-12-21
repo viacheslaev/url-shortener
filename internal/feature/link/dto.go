@@ -1,7 +1,5 @@
 package link
 
-const baseURL = "http://localhost:8080/"
-
 type createShortLinkRequest struct {
 	LongURL string `json:"long_url"`
 }
@@ -12,10 +10,10 @@ type shortLinkResponse struct {
 	LongURL   string `json:"long_url"`
 }
 
-func createShortLinkResponse(link shortLink) shortLinkResponse {
+func createShortLinkResponse(baseURL string, link shortLink) shortLinkResponse {
 	return shortLinkResponse{
 		ShortCode: link.Code,
-		ShortURL:  baseURL + link.Code,
+		ShortURL:  baseURL + "/" + link.Code,
 		LongURL:   link.LongURL,
 	}
 }
