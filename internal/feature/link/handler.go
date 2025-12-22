@@ -28,7 +28,7 @@ func (handler *URLHandler) CreateShortLink(w http.ResponseWriter, r *http.Reques
 
 	link, err := handler.service.createShortLink(req.LongURL)
 	if err != nil {
-		httpx.WriteErr(w, http.StatusInternalServerError, err.Error())
+		httpx.WriteErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
