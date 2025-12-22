@@ -13,6 +13,7 @@ type Config struct {
 	HTTPAddr string
 	BaseURL  string
 	LogLevel string
+	DSN      string
 }
 
 func Load() *Config {
@@ -21,9 +22,10 @@ func Load() *Config {
 	}
 
 	cfg := &Config{
-		HTTPAddr: getEnv("HTTP_ADDR", ":8080"),
-		BaseURL:  getEnv("BASE_URL", "http://localhost:8080"),
-		LogLevel: getEnv("LOG_LEVEL", "INFO"),
+		HTTPAddr: getEnv("HTTP_ADDR"),
+		BaseURL:  getEnv("BASE_URL"),
+		LogLevel: getEnv("LOG_LEVEL"),
+		DSN:      getEnv("DSN"),
 	}
 
 	validate(cfg)
@@ -35,16 +37,16 @@ func Load() *Config {
 func readEnvFile() {
 	log.Println("Reading properties from .env file")
 	if err := godotenv.Load(); err != nil {
-		log.Println("no .env file found, loading default cfg")
-		return
+		log.Fatalf("Error reading .env file %q", err)
 	}
 }
 
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func getEnv(key string) string {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		log.Fatalf("env %s is required", key)
 	}
-	return fallback
+	return v
 }
 
 func validate(cfg *Config) {
@@ -65,6 +67,11 @@ func validate(cfg *Config) {
 
 	// normalize: remove trailing slash
 	cfg.BaseURL = strings.TrimRight(cfg.BaseURL, "/")
+
+	// DSN
+	if strings.TrimSpace(cfg.DSN) == "" {
+		log.Fatal("DSN is required")
+	}
 
 	// LogLevel
 	switch strings.ToLower(cfg.LogLevel) {

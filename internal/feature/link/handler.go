@@ -26,7 +26,7 @@ func (handler *URLHandler) CreateShortLink(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	link, err := handler.service.createShortLink(req.LongURL)
+	link, err := handler.service.createShortLink(r.Context(), req.LongURL)
 	if err != nil {
 		httpx.WriteErr(w, http.StatusBadRequest, err.Error())
 		return
@@ -39,7 +39,7 @@ func (handler *URLHandler) CreateShortLink(w http.ResponseWriter, r *http.Reques
 func (handler *URLHandler) ResolveShortLink(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 
-	longLink, ok := handler.service.resolveLongLink(code)
+	longLink, ok := handler.service.resolveLongLink(r.Context(), code)
 	if !ok {
 		http.NotFound(w, r)
 		return
