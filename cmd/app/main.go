@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/viacheslaev/url-shortener/internal/config"
 	"github.com/viacheslaev/url-shortener/internal/feature/link"
@@ -22,7 +23,8 @@ func main() {
 	defer disconnectDB(db)
 
 	repo := postgres.NewLinkRepository(db)
-	service := link.NewURLService(repo)
+	linkCfg := createLinkConfig(cfg)
+	service := link.NewURLService(repo, linkCfg)
 	handler := link.NewURLHandler(cfg, service)
 
 	router := middleware.Logging(server.NewRouter(cfg, handler))
@@ -40,5 +42,11 @@ func connectDB(cfg *config.Config) (*sql.DB, error) {
 func disconnectDB(db *sql.DB) {
 	if err := db.Close(); err != nil {
 		log.Printf("db close error: %v", err)
+	}
+}
+
+func createLinkConfig(cfg *config.Config) *link.Config {
+	return &link.Config{
+		ShortLinkTTL: time.Duration(cfg.LinkTTLHours) * time.Hour,
 	}
 }

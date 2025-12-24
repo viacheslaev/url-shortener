@@ -4,16 +4,18 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	HTTPAddr string
-	BaseURL  string
-	LogLevel string
-	DSN      string
+	HTTPAddr     string
+	BaseURL      string
+	LogLevel     string
+	DSN          string
+	LinkTTLHours int
 }
 
 func Load() *Config {
@@ -22,13 +24,15 @@ func Load() *Config {
 	}
 
 	cfg := &Config{
-		HTTPAddr: getEnv("HTTP_ADDR"),
-		BaseURL:  getEnv("BASE_URL"),
-		LogLevel: getEnv("LOG_LEVEL"),
-		DSN:      getEnv("DSN"),
+		HTTPAddr:     getEnv("HTTP_ADDR"),
+		BaseURL:      getEnv("BASE_URL"),
+		LogLevel:     getEnv("LOG_LEVEL"),
+		DSN:          getEnv("DSN"),
+		LinkTTLHours: getEnvInt("LINK_TTL_HOURS"),
 	}
 
 	validate(cfg)
+
 	log.Printf("Config loaded APP_ENV=%s, LOG_LEVEL=%s\n", os.Getenv("APP_ENV"), cfg.LogLevel)
 	return cfg
 }
@@ -73,6 +77,11 @@ func validate(cfg *Config) {
 		log.Fatal("DSN is required")
 	}
 
+	// LINK
+	if cfg.LinkTTLHours <= 0 {
+		log.Fatalf("LINK_TTL_HOURS must be > 0 (got %d)", cfg.LinkTTLHours)
+	}
+
 	// LogLevel
 	switch strings.ToLower(cfg.LogLevel) {
 	case "debug", "info", "warn", "error":
@@ -80,4 +89,13 @@ func validate(cfg *Config) {
 	default:
 		log.Fatalf("LOG_LEVEL must be one of: debug, info, warn, error (got %q)", cfg.LogLevel)
 	}
+}
+
+func getEnvInt(key string) int {
+	v := getEnv(key)
+	i, err := strconv.Atoi(v)
+	if err != nil {
+		log.Fatalf("env %s must be an integer (got %q)", key, v)
+	}
+	return i
 }

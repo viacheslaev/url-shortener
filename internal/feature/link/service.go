@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/lib/pq"
 )
@@ -13,11 +14,15 @@ import (
 const uniqueViolationErrCode = "23505"
 
 type URLService struct {
-	repo Repository
+	repo   Repository
+	config *Config
 }
 
-func NewURLService(repo Repository) *URLService {
-	return &URLService{repo: repo}
+func NewURLService(repo Repository, cfg *Config) *URLService {
+	return &URLService{
+		repo:   repo,
+		config: cfg,
+	}
 }
 
 func (service *URLService) createShortLink(ctx context.Context, longURL string) (ShortLink, error) {
@@ -35,8 +40,9 @@ func (service *URLService) createShortLink(ctx context.Context, longURL string) 
 		}
 
 		var shortLink = ShortLink{
-			Code:    code,
-			LongURL: longURL,
+			Code:      code,
+			LongURL:   longURL,
+			ExpiresAt: service.calculateExpireTime(),
 		}
 		err = service.repo.Save(ctx, shortLink)
 		if err == nil {
@@ -69,4 +75,8 @@ func (service *URLService) resolveLongLink(ctx context.Context, code string) (st
 	}
 
 	return longURL, true
+}
+
+func (service *URLService) calculateExpireTime() time.Time {
+	return time.Now().Add(service.config.ShortLinkTTL)
 }

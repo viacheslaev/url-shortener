@@ -1,6 +1,9 @@
 package link
 
+import "time"
+
 type ShortLink struct {
-	Code    string
-	LongURL string
+	Code      string
+	LongURL   string
+	ExpiresAt time.Time
 }
