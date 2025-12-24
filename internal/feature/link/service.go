@@ -20,10 +20,10 @@ func NewURLService(repo Repository) *URLService {
 	return &URLService{repo: repo}
 }
 
-func (service *URLService) createShortLink(ctx context.Context, longURL string) (shortLink, error) {
+func (service *URLService) createShortLink(ctx context.Context, longURL string) (ShortLink, error) {
 	longURL = strings.TrimSpace(longURL)
 	if !validateURL(longURL) {
-		return shortLink{}, errors.New("invalid url")
+		return ShortLink{}, errors.New("invalid url")
 	}
 
 	// Generates shortCode with retries in case unique constraint violation
@@ -31,12 +31,16 @@ func (service *URLService) createShortLink(ctx context.Context, longURL string) 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		code, err := generateShortCode()
 		if err != nil {
-			return shortLink{}, fmt.Errorf("failed to generate short code: %w", err)
+			return ShortLink{}, fmt.Errorf("failed to generate short code: %w", err)
 		}
 
-		err = service.repo.Save(ctx, code, longURL)
+		var shortLink = ShortLink{
+			Code:    code,
+			LongURL: longURL,
+		}
+		err = service.repo.Save(ctx, shortLink)
 		if err == nil {
-			return shortLink{Code: code, LongURL: longURL}, nil
+			return shortLink, nil
 		}
 
 		var pqErr *pq.Error
@@ -45,11 +49,11 @@ func (service *URLService) createShortLink(ctx context.Context, longURL string) 
 			continue
 		}
 
-		return shortLink{}, err
+		return ShortLink{}, err
 	}
 
 	log.Printf("ERROR createShortLink: failed to generate unique code after %d attempts, longURL=%s", maxAttempts, longURL)
-	return shortLink{}, errors.New("failed to generate unique short code")
+	return ShortLink{}, errors.New("failed to generate unique short code")
 }
 
 func (service *URLService) resolveLongLink(ctx context.Context, code string) (string, bool) {

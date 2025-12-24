@@ -10,7 +10,7 @@ type shortLinkResponse struct {
 	LongURL   string `json:"long_url"`
 }
 
-func createShortLinkResponse(baseURL string, link shortLink) shortLinkResponse {
+func createShortLinkResponse(baseURL string, link ShortLink) shortLinkResponse {
 	return shortLinkResponse{
 		ShortCode: link.Code,
 		ShortURL:  baseURL + "/" + link.Code,

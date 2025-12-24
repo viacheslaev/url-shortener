@@ -16,12 +16,12 @@ func NewLinkRepository(db *sql.DB) *LinkRepository {
 	return &LinkRepository{db: db}
 }
 
-func (r *LinkRepository) Save(ctx context.Context, code string, longURL string) error {
+func (r *LinkRepository) Save(ctx context.Context, shortLink link.ShortLink) error {
 	const query = `
 		INSERT INTO links (code, long_url)
 		VALUES ($1, $2)
 	`
-	_, err := r.db.ExecContext(ctx, query, code, longURL)
+	_, err := r.db.ExecContext(ctx, query, shortLink.Code, shortLink.LongURL)
 	return err
 }
 

@@ -1,6 +1,6 @@
 package link
 
-type shortLink struct {
+type ShortLink struct {
 	Code    string
 	LongURL string
 }

@@ -5,7 +5,7 @@ import "context"
 var ErrNotFound = errorString("link not found")
 
 type Repository interface {
-	Save(ctx context.Context, code string, longURL string) error
+	Save(ctx context.Context, link ShortLink) error
 	GetLongURL(ctx context.Context, code string) (string, error)
 }
 
