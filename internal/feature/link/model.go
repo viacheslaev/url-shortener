@@ -7,3 +7,8 @@ type ShortLink struct {
 	LongURL   string
 	ExpiresAt time.Time
 }
+
+type LongLink struct {
+	LongURL   string
+	ExpiresAt *time.Time
+}

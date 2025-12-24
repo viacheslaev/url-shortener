@@ -62,19 +62,35 @@ func (service *URLService) createShortLink(ctx context.Context, longURL string) 
 	return ShortLink{}, errors.New("failed to generate unique short code")
 }
 
-func (service *URLService) resolveLongLink(ctx context.Context, code string) (string, bool) {
-	longURL, err := service.repo.GetLongURL(ctx, code)
+func (service *URLService) resolveLongLink(ctx context.Context, code string) (string, error) {
+	longLink, err := service.repo.GetLongLink(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return "", false
+			return "", ErrNotFound
 		}
 
 		log.Printf("ERROR resolveLongLink failed: code=%s err=%v", code, err)
 
-		return "", false
+		return "", err
 	}
 
-	return longURL, true
+	// If ExpiresAt == nil this is permanent link
+	if longLink.ExpiresAt != nil {
+		expiresAt := longLink.ExpiresAt.UTC()
+		now := time.Now().UTC()
+
+		if !expiresAt.After(time.Now()) {
+			log.Printf(
+				"Expired link: code=%s expires_at=%s now=%s",
+				code,
+				expiresAt.Format(time.RFC3339),
+				now.Format(time.RFC3339),
+			)
+			return "", ErrLinkExpired
+		}
+	}
+
+	return longLink.LongURL, nil
 }
 
 func (service *URLService) calculateExpireTime() time.Time {

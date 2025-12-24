@@ -2,6 +2,8 @@ package link
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/viacheslaev/url-shortener/internal/config"
@@ -39,11 +41,24 @@ func (handler *URLHandler) CreateShortLink(w http.ResponseWriter, r *http.Reques
 func (handler *URLHandler) ResolveShortLink(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 
-	longLink, ok := handler.service.resolveLongLink(r.Context(), code)
-	if !ok {
-		http.NotFound(w, r)
+	longLink, err := handler.service.resolveLongLink(r.Context(), code)
+	if err == nil {
+		http.Redirect(w, r, longLink, http.StatusFound)
 		return
 	}
 
-	http.Redirect(w, r, longLink, http.StatusFound)
+	switch {
+	case errors.Is(err, ErrLinkExpired):
+		httpx.WriteErr(w, http.StatusGone, ErrLinkExpired.Error())
+		return
+
+	case errors.Is(err, ErrNotFound):
+		http.NotFound(w, r)
+		return
+
+	default:
+		log.Printf("Resolve failed: code=%s err=%v", code, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+
 }

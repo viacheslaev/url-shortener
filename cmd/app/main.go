@@ -47,6 +47,6 @@ func disconnectDB(db *sql.DB) {
 
 func createLinkConfig(cfg *config.Config) *link.Config {
 	return &link.Config{
-		ShortLinkTTL: time.Duration(cfg.LinkTTLHours) * time.Hour,
+		ShortLinkTTL: time.Duration(cfg.LinkTTLHours) * time.Second,
 	}
 }

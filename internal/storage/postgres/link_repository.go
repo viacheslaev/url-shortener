@@ -25,19 +25,20 @@ func (r *LinkRepository) Save(ctx context.Context, link link.ShortLink) error {
 	return err
 }
 
-func (r *LinkRepository) GetLongURL(ctx context.Context, code string) (string, error) {
+// GetLongLink returns original URL for the given short code or ErrNotFound if the link does not exist.
+func (r *LinkRepository) GetLongLink(ctx context.Context, code string) (link.LongLink, error) {
 	const query = `
-		SELECT long_url
+		SELECT long_url, expires_at
 		FROM links
 		WHERE code = $1
-	`
-	var longURL string
-	err := r.db.QueryRowContext(ctx, query, code).Scan(&longURL)
+		`
+	var longLink link.LongLink
+	err := r.db.QueryRowContext(ctx, query, code).Scan(&longLink.LongURL, &longLink.ExpiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", link.ErrNotFound
+		return link.LongLink{}, link.ErrNotFound
 	}
 	if err != nil {
-		return "", err
+		return link.LongLink{}, err
 	}
-	return longURL, nil
+	return longLink, nil
 }
