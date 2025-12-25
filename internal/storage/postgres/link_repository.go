@@ -42,3 +42,20 @@ func (r *LinkRepository) GetLongLink(ctx context.Context, code string) (link.Lon
 	}
 	return longLink, nil
 }
+
+func (r *LinkRepository) DeleteExpiredLinks(ctx context.Context) (int64, error) {
+	const q = `
+        DELETE FROM links
+        WHERE expires_at IS NOT NULL
+          AND expires_at <= NOW()
+    `
+	res, err := r.db.ExecContext(ctx, q)
+	if err != nil {
+		return 0, err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return rows, nil
+}

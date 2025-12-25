@@ -11,11 +11,12 @@ import (
 )
 
 type Config struct {
-	HTTPAddr     string
-	BaseURL      string
-	LogLevel     string
-	DSN          string
-	LinkTTLHours int
+	HTTPAddr                         string
+	BaseURL                          string
+	LogLevel                         string
+	DSN                              string
+	LinkTTLHours                     int
+	ExpiredLinksCleanupIntervalHours int
 }
 
 func Load() *Config {
@@ -24,11 +25,12 @@ func Load() *Config {
 	}
 
 	cfg := &Config{
-		HTTPAddr:     getEnv("HTTP_ADDR"),
-		BaseURL:      getEnv("BASE_URL"),
-		LogLevel:     getEnv("LOG_LEVEL"),
-		DSN:          getEnv("DSN"),
-		LinkTTLHours: getEnvInt("LINK_TTL_HOURS"),
+		HTTPAddr:                         getEnv("HTTP_ADDR"),
+		BaseURL:                          getEnv("BASE_URL"),
+		LogLevel:                         getEnv("LOG_LEVEL"),
+		DSN:                              getEnv("DSN"),
+		LinkTTLHours:                     getEnvInt("LINK_TTL_HOURS"),
+		ExpiredLinksCleanupIntervalHours: getEnvInt("EXPIRED_LINKS_CLEANUP_INTERVAL_HOURS"),
 	}
 
 	validate(cfg)
@@ -80,6 +82,9 @@ func validate(cfg *Config) {
 	// LINK
 	if cfg.LinkTTLHours <= 0 {
 		log.Fatalf("LINK_TTL_HOURS must be > 0 (got %d)", cfg.LinkTTLHours)
+	}
+	if cfg.ExpiredLinksCleanupIntervalHours <= 0 {
+		log.Fatalf("EXPIRED_LINKS_CLEANUP_INTERVAL_HOURS must be > 0 (got %d)", cfg.LinkTTLHours)
 	}
 
 	// LogLevel
