@@ -3,8 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/viacheslaev/url-shortener/internal/config"
@@ -15,7 +20,7 @@ import (
 )
 
 func main() {
-	// CONFIGS
+	// CONFIG
 	cfg := config.Load()
 	linkCfg := createLinkConfig(cfg)
 
@@ -29,19 +34,46 @@ func main() {
 	// REPOSITORY
 	repo := postgres.NewLinkRepository(db)
 
-	// SERVICES
+	// SERVICE
 	service := link.NewURLService(repo, linkCfg)
 	handler := link.NewURLHandler(cfg, service)
 
 	// ROUTER
 	router := middleware.Logging(server.NewRouter(cfg, handler))
 
-	// JOBS
-	startExpiredLinksCleanupJob(repo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
-
 	// SERVER
-	log.Printf("listening on %s\n", cfg.HTTPAddr)
-	log.Fatal(http.ListenAndServe(cfg.HTTPAddr, router))
+	srv := &http.Server{
+		Addr:    cfg.HTTPAddr,
+		Handler: router,
+	}
+
+	// SHUTDOWN CONTEXT
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// JOB
+	cleanupJobStop, cleanupJobWait := startExpiredLinksCleanupJob(repo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
+
+	// Start server
+	go func() {
+		log.Printf("listening on %s\n", cfg.HTTPAddr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("http server failed: %v", err)
+		}
+	}()
+
+	// GRACEFULLY SHUTDOWN
+	<-ctx.Done()
+	log.Println("shutdown signal received")
+
+	cleanupJobStop()
+	cleanupJobWait()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("server shutdown error: %v", err)
+	}
 }
 
 func connectDB(cfg *config.Config) (*sql.DB, error) {
@@ -62,23 +94,42 @@ func createLinkConfig(cfg *config.Config) *link.Config {
 	}
 }
 
-func startExpiredLinksCleanupJob(repo link.Repository, interval time.Duration) {
+// startExpiredLinksCleanupJob starts background job that periodically deletes expired links.
+// It returns two functions:
+//   - stop(): signals the worker to stop
+//   - wait(): blocks until the worker finishes cleanup job
+func startExpiredLinksCleanupJob(repo link.Repository, interval time.Duration) (stop func(), wait func()) {
 	ticker := time.NewTicker(interval)
+	done := make(chan struct{})
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 
 	go func() {
-		log.Printf("started expired links cleanup job: interval=%s", interval)
-		for range ticker.C {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			deleted, err := repo.DeleteExpiredLinks(ctx)
-			cancel()
+		defer wg.Done()
 
-			if err != nil {
-				log.Printf("cleanup expired links failed: %v", err)
-				continue
-			}
-			if deleted > 0 {
-				log.Printf("cleanup expired links: deleted=%d", deleted)
+		log.Printf("started expired links cleanup job: interval=%s", interval)
+
+		for {
+			select {
+			case <-ticker.C:
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				deleted, err := repo.DeleteExpiredLinks(ctx)
+				cancel()
+
+				if err != nil {
+					log.Printf("cleanup expired links failed: %v", err)
+				} else if deleted > 0 {
+					log.Printf("cleanup expired links: deleted=%d", deleted)
+				}
+
+			case <-done:
+				ticker.Stop()
+				log.Printf("stopped expired links cleanup job")
+				return
 			}
 		}
 	}()
+
+	return func() { close(done) }, wg.Wait
 }
