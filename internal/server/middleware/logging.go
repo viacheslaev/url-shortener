@@ -14,11 +14,11 @@ func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logWriter := &logWriter{ResponseWriter: w}
 
-		log.Printf("Request %s %s", r.Method, r.URL.Path)
+		log.Printf("request %s %s", r.Method, r.URL.Path)
 
 		next.ServeHTTP(logWriter, r)
 
-		log.Printf("Response status %d", logWriter.status)
+		log.Printf("response status %d", logWriter.status)
 	})
 }
 

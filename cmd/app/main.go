@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -25,11 +24,11 @@ func main() {
 	linkCfg := createLinkConfig(cfg)
 
 	// DB
-	db, err := connectDB(cfg)
+	db, err := postgres.ConnectDB(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect db: %v", err)
+		log.Fatalf("failed to connect db: %v", err)
 	}
-	defer disconnectDB(db)
+	defer postgres.DisconnectDB(db)
 
 	// REPOSITORY
 	repo := postgres.NewLinkRepository(db)
@@ -56,7 +55,7 @@ func main() {
 
 	// Start server
 	go func() {
-		log.Printf("listening on %s\n", cfg.HTTPAddr)
+		log.Printf("starting server on port%s\n", cfg.HTTPAddr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("http server failed: %v", err)
 		}
@@ -71,20 +70,11 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("server shutdown error: %v", err)
-	}
-}
-
-func connectDB(cfg *config.Config) (*sql.DB, error) {
-	return postgres.New(postgres.DBConfig{
-		DSN: cfg.DSN,
-	})
-}
-
-func disconnectDB(db *sql.DB) {
-	if err := db.Close(); err != nil {
-		log.Printf("db close error: %v", err)
+	} else {
+		log.Println("server stopped")
 	}
 }
 

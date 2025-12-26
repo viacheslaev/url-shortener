@@ -35,13 +35,13 @@ func Load() *Config {
 
 	validate(cfg)
 
-	log.Printf("Config loaded APP_ENV=%s, LOG_LEVEL=%s\n", os.Getenv("APP_ENV"), cfg.LogLevel)
+	log.Printf("config loaded APP_ENV=%s, LOG_LEVEL=%s\n", os.Getenv("APP_ENV"), cfg.LogLevel)
 	return cfg
 }
 
 // readEnvFile loads .env variables from file when APP_ENV=dev
 func readEnvFile() {
-	log.Println("Reading properties from .env file")
+	log.Println("reading properties from .env file")
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error reading .env file %q", err)
 	}
