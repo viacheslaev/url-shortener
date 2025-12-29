@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/viacheslaev/url-shortener/internal/config"
+	"github.com/viacheslaev/url-shortener/internal/feature/account"
 	"github.com/viacheslaev/url-shortener/internal/feature/link"
 	"github.com/viacheslaev/url-shortener/internal/server"
 	"github.com/viacheslaev/url-shortener/internal/server/middleware"
@@ -31,14 +32,19 @@ func main() {
 	defer postgres.DisconnectDB(db)
 
 	// REPOSITORY
-	repo := postgres.NewLinkRepository(db)
+	linkRepo := postgres.NewLinkRepository(db)
+	accountRepo := postgres.NewAccountRepository(db)
 
 	// SERVICE
-	service := link.NewURLService(repo, linkCfg)
-	handler := link.NewURLHandler(cfg, service)
+	urlService := link.NewURLService(linkRepo, linkCfg)
+	accountService := account.NewAccountService(accountRepo)
+
+	// HANDLER
+	urlHandler := link.NewURLHandler(cfg, urlService)
+	accRegisterHandler := account.NewAccountRegisterHandler(accountService)
 
 	// ROUTER
-	router := middleware.Logging(server.NewRouter(cfg, handler))
+	router := middleware.Logging(server.NewRouter(urlHandler, accRegisterHandler))
 
 	// SERVER
 	srv := &http.Server{
@@ -51,7 +57,7 @@ func main() {
 	defer stop()
 
 	// JOB
-	cleanupJobStop, cleanupJobWait := startExpiredLinksCleanupJob(repo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
+	cleanupJobStop, cleanupJobWait := startExpiredLinksCleanupJob(linkRepo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
 
 	// Start server
 	go func() {
