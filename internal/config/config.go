@@ -11,12 +11,15 @@ import (
 )
 
 type Config struct {
+	ServiceName                      string
 	HTTPAddr                         string
 	BaseURL                          string
 	LogLevel                         string
 	DSN                              string
 	LinkTTLHours                     int
 	ExpiredLinksCleanupIntervalHours int
+	JWTSecret                        string
+	JWTAccessTokenTTL                int
 }
 
 func Load() *Config {
@@ -25,12 +28,15 @@ func Load() *Config {
 	}
 
 	cfg := &Config{
+		ServiceName:                      getEnv("SERVICE_NAME"),
 		HTTPAddr:                         getEnv("HTTP_ADDR"),
 		BaseURL:                          getEnv("BASE_URL"),
 		LogLevel:                         getEnv("LOG_LEVEL"),
 		DSN:                              getEnv("DSN"),
 		LinkTTLHours:                     getEnvInt("LINK_TTL_HOURS"),
 		ExpiredLinksCleanupIntervalHours: getEnvInt("EXPIRED_LINKS_CLEANUP_INTERVAL_HOURS"),
+		JWTSecret:                        getEnv("JWT_SECRET"),
+		JWTAccessTokenTTL:                getEnvInt("JWT_ACCESS_TOKEN_TTL_HOURS"),
 	}
 
 	validate(cfg)
@@ -56,6 +62,11 @@ func getEnv(key string) string {
 }
 
 func validate(cfg *Config) {
+	// ServiceName
+	if strings.TrimSpace(cfg.ServiceName) == "" {
+		log.Fatal("SERVICE_NAME is required")
+	}
+
 	// HTTPAddr
 	if strings.TrimSpace(cfg.HTTPAddr) == "" {
 		log.Fatal("HTTP_ADDR is required")
@@ -85,6 +96,14 @@ func validate(cfg *Config) {
 	}
 	if cfg.ExpiredLinksCleanupIntervalHours <= 0 {
 		log.Fatalf("EXPIRED_LINKS_CLEANUP_INTERVAL_HOURS must be > 0 (got %d)", cfg.LinkTTLHours)
+	}
+
+	// JWT
+	if strings.TrimSpace(cfg.JWTSecret) == "" {
+		log.Fatal("JWT_SECRET is required")
+	}
+	if cfg.JWTAccessTokenTTL <= 0 {
+		log.Fatal("JWT_TTL_HOURS must be > 0")
 	}
 
 	// LogLevel

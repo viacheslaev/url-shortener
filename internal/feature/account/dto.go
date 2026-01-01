@@ -6,11 +6,11 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	UserID string `json:"user_id"` // public_id UUID
+	AccountID string `json:"account_id"` // public_id UUID
 }
 
 func createRegistrationResponse(publicId string) RegisterResponse {
 	return RegisterResponse{
-		UserID: publicId,
+		AccountID: publicId,
 	}
 }

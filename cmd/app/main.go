@@ -13,6 +13,7 @@ import (
 
 	"github.com/viacheslaev/url-shortener/internal/config"
 	"github.com/viacheslaev/url-shortener/internal/feature/account"
+	"github.com/viacheslaev/url-shortener/internal/feature/auth"
 	"github.com/viacheslaev/url-shortener/internal/feature/link"
 	"github.com/viacheslaev/url-shortener/internal/server"
 	"github.com/viacheslaev/url-shortener/internal/server/middleware"
@@ -39,12 +40,17 @@ func main() {
 	urlService := link.NewURLService(linkRepo, linkCfg)
 	accountService := account.NewAccountService(accountRepo)
 
+	// AUTH (register/login + JWT)
+	tokenIssuer := auth.NewTokenIssuer(cfg)
+	authService := auth.NewAuthService(accountRepo, tokenIssuer)
+
 	// HANDLER
 	urlHandler := link.NewURLHandler(cfg, urlService)
 	accRegisterHandler := account.NewAccountRegisterHandler(accountService)
+	authHandler := auth.NewAuthHandler(authService)
 
 	// ROUTER
-	router := middleware.Logging(server.NewRouter(urlHandler, accRegisterHandler))
+	router := middleware.Logging(server.NewRouter(urlHandler, accRegisterHandler, authHandler))
 
 	// SERVER
 	srv := &http.Server{
