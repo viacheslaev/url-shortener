@@ -6,6 +6,7 @@ import (
 	"github.com/viacheslaev/url-shortener/internal/feature/account"
 	"github.com/viacheslaev/url-shortener/internal/feature/auth"
 	"github.com/viacheslaev/url-shortener/internal/feature/link"
+	"github.com/viacheslaev/url-shortener/internal/server/middleware"
 )
 
 // NewRouter wires HTTP routes.
@@ -21,10 +22,11 @@ func NewRouter(
 	urlHandler *link.URLHandler,
 	accRegisterHandler *account.RegisterHandler,
 	authHandler *auth.AuthHandler,
+	authMiddleware *middleware.AuthMiddleware,
 ) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /api/v1/urls", urlHandler.CreateShortLink)
+	mux.Handle("POST /api/v1/urls", authMiddleware.Authorize(http.HandlerFunc(urlHandler.CreateShortLink)))
 
 	mux.HandleFunc("GET /{code}", urlHandler.ResolveShortLink)
 	mux.HandleFunc("POST /api/v1/auth/register", accRegisterHandler.RegisterAccount)
