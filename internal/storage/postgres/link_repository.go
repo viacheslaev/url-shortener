@@ -18,10 +18,10 @@ func NewLinkRepository(db *sql.DB) *LinkRepository {
 
 func (r *LinkRepository) Save(ctx context.Context, link link.ShortLink) error {
 	const query = `
-		INSERT INTO links (code, long_url, expires_at)
-		VALUES ($1, $2, $3)
+		INSERT INTO links (code, long_url, expires_at, account_public_id)
+		VALUES ($1, $2, $3, $4)
 	`
-	_, err := r.db.ExecContext(ctx, query, link.Code, link.LongURL, link.ExpiresAt)
+	_, err := r.db.ExecContext(ctx, query, link.Code, link.LongURL, link.ExpiresAt, link.AccountPublicId)
 	return err
 }
 

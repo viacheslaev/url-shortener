@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/viacheslaev/url-shortener/internal/config"
+	"github.com/viacheslaev/url-shortener/internal/feature/auth"
 	"github.com/viacheslaev/url-shortener/internal/server/httpx"
 )
 
@@ -22,13 +23,19 @@ func NewURLHandler(cfg *config.Config, svc *URLService) *URLHandler {
 }
 
 func (handler *URLHandler) CreateShortLink(w http.ResponseWriter, r *http.Request) {
+	accountPublicId, ok := auth.AccountPublicIDFromContext(r.Context())
+	if !ok {
+		httpx.WriteErr(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
 	var req createShortLinkRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpx.WriteErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
-	link, err := handler.service.createShortLink(r.Context(), req.LongURL)
+	link, err := handler.service.createShortLink(r.Context(), req.LongURL, accountPublicId)
 	if err != nil {
 		httpx.WriteErr(w, http.StatusBadRequest, err.Error())
 		return

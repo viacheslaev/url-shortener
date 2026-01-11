@@ -3,9 +3,10 @@ package link
 import "time"
 
 type ShortLink struct {
-	Code      string
-	LongURL   string
-	ExpiresAt time.Time
+	AccountPublicId string
+	Code            string
+	LongURL         string
+	ExpiresAt       time.Time
 }
 
 type LongLink struct {

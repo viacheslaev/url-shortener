@@ -25,7 +25,7 @@ func NewURLService(repo Repository, cfg *Config) *URLService {
 	}
 }
 
-func (service *URLService) createShortLink(ctx context.Context, longURL string) (ShortLink, error) {
+func (service *URLService) createShortLink(ctx context.Context, longURL string, accountId string) (ShortLink, error) {
 	longURL = strings.TrimSpace(longURL)
 	if !validateURL(longURL) {
 		return ShortLink{}, errors.New("invalid url")
@@ -40,9 +40,10 @@ func (service *URLService) createShortLink(ctx context.Context, longURL string) 
 		}
 
 		var shortLink = ShortLink{
-			Code:      code,
-			LongURL:   longURL,
-			ExpiresAt: service.calculateExpireTime(),
+			AccountPublicId: accountId,
+			Code:            code,
+			LongURL:         longURL,
+			ExpiresAt:       service.calculateExpireTime(),
 		}
 		err = service.repo.Save(ctx, shortLink)
 		if err == nil {

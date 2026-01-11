@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"log"
 	"net/http"
 	"strings"
@@ -11,10 +10,6 @@ import (
 	"github.com/viacheslaev/url-shortener/internal/feature/auth"
 	"github.com/viacheslaev/url-shortener/internal/server/httpx"
 )
-
-type ctxKey string
-
-const accountIDKey ctxKey = "account_id"
 
 type AuthMiddleware struct {
 	jwtSecret string
@@ -46,7 +41,8 @@ func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), accountIDKey, claims.Subject)
+		ctx := auth.WithAccountPublicID(r.Context(), claims.Subject)
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
