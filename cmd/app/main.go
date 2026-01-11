@@ -43,7 +43,7 @@ func main() {
 	// AUTH (register/login + JWT)
 	tokenIssuer := auth.NewTokenIssuer(cfg)
 	authService := auth.NewAuthService(accountRepo, tokenIssuer)
-	authMiddleware := middleware.NewAuthMiddleware(cfg)
+	authMiddleware := middleware.NewAuthMiddleware(accountRepo, cfg)
 
 	// HANDLER
 	urlHandler := link.NewURLHandler(cfg, urlService)

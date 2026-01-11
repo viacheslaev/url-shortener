@@ -12,10 +12,10 @@ import (
 )
 
 type AccountService struct {
-	repo Repository
+	repo AccountRepository
 }
 
-func NewAccountService(repo Repository) *AccountService {
+func NewAccountService(repo AccountRepository) *AccountService {
 	return &AccountService{repo: repo}
 }
 

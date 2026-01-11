@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/viacheslaev/url-shortener/internal/feature/account"
 )
@@ -44,4 +45,16 @@ func (r *AccountRepository) FindActiveAccountByEmail(ctx context.Context, email 
 		return nil, err
 	}
 	return &a, nil
+}
+
+func (r *AccountRepository) FindAccountStatusByPublicID(ctx context.Context, publicID string) (*account.AccountStatus, error) {
+	var status account.AccountStatus
+	err := r.db.QueryRowContext(ctx, `
+        SELECT public_id, is_active FROM accounts WHERE public_id=$1
+    `, publicID).Scan(&status.PublicID, &status.IsActive)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, account.ErrAccountNotFound
+	}
+	return &status, err
 }

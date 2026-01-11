@@ -12,3 +12,8 @@ type Account struct {
 	DeletedAt *time.Time
 	CreatedAt time.Time
 }
+
+type AccountStatus struct {
+	PublicID string
+	IsActive bool
+}

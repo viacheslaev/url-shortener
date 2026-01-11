@@ -1,27 +1,32 @@
 package middleware
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/viacheslaev/url-shortener/internal/config"
+	"github.com/viacheslaev/url-shortener/internal/feature/account"
 	"github.com/viacheslaev/url-shortener/internal/feature/auth"
 	"github.com/viacheslaev/url-shortener/internal/server/httpx"
 )
 
 type AuthMiddleware struct {
-	jwtSecret string
-	issuer    string
-	audience  string
+	accountRepo account.AccountRepository
+	jwtSecret   string
+	issuer      string
+	audience    string
 }
 
-func NewAuthMiddleware(cfg *config.Config) *AuthMiddleware {
+func NewAuthMiddleware(accountRepo account.AccountRepository, cfg *config.Config) *AuthMiddleware {
 	return &AuthMiddleware{
-		jwtSecret: cfg.JWTSecret,
-		issuer:    cfg.ServiceName,
-		audience:  cfg.ServiceName + "-" + "api",
+		accountRepo: accountRepo,
+		jwtSecret:   cfg.JWTSecret,
+		issuer:      cfg.ServiceName,
+		audience:    cfg.ServiceName + "-" + "api",
 	}
 }
 
@@ -41,8 +46,11 @@ func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := auth.WithAccountPublicID(r.Context(), claims.Subject)
+		if !m.authorizeAccount(w, r.Context(), claims.Subject) {
+			return
+		}
 
+		ctx := auth.WithAccountPublicID(r.Context(), claims.Subject)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -69,4 +77,27 @@ func parseJWT(tokenString string, secret string, issuer string, audience string)
 	}
 
 	return claims, nil
+}
+
+// authorizeAccount checks if account exists and is active
+func (m *AuthMiddleware) authorizeAccount(w http.ResponseWriter, ctx context.Context, publicID string) bool {
+	accStatus, err := m.accountRepo.FindAccountStatusByPublicID(ctx, publicID)
+
+	if errors.Is(err, account.ErrAccountNotFound) {
+		httpx.WriteErr(w, http.StatusUnauthorized, "account not found")
+		return false
+	}
+
+	if err != nil {
+		log.Printf("account search failed: %v", err)
+		httpx.WriteErr(w, http.StatusInternalServerError, "internal server error")
+		return false
+	}
+
+	if !accStatus.IsActive {
+		httpx.WriteErr(w, http.StatusForbidden, "account not active")
+		return false
+	}
+
+	return true
 }
