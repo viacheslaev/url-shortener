@@ -14,11 +14,11 @@ import (
 const uniqueViolationErrCode = "23505"
 
 type URLService struct {
-	repo   Repository
+	repo   LinkRepository
 	config *Config
 }
 
-func NewURLService(repo Repository, cfg *Config) *URLService {
+func NewURLService(repo LinkRepository, cfg *Config) *URLService {
 	return &URLService{
 		repo:   repo,
 		config: cfg,
@@ -63,14 +63,14 @@ func (service *URLService) createShortLink(ctx context.Context, longURL string, 
 	return ShortLink{}, errors.New("failed to generate unique short code")
 }
 
-func (service *URLService) resolveLongLink(ctx context.Context, code string) (string, error) {
+func (service *URLService) resolveShortLink(ctx context.Context, code string) (string, error) {
 	longLink, err := service.repo.GetLongLink(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return "", ErrNotFound
 		}
 
-		log.Printf("ERROR resolveLongLink failed: code=%s err=%v", code, err)
+		log.Printf("ERROR resolveShortLink failed: code=%s err=%v", code, err)
 
 		return "", err
 	}

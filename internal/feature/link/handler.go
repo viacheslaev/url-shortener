@@ -48,7 +48,7 @@ func (handler *URLHandler) CreateShortLink(w http.ResponseWriter, r *http.Reques
 func (handler *URLHandler) ResolveShortLink(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 
-	longLink, err := handler.service.resolveLongLink(r.Context(), code)
+	longLink, err := handler.service.resolveShortLink(r.Context(), code)
 	if err == nil {
 		http.Redirect(w, r, longLink, http.StatusFound)
 		return

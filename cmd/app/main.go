@@ -101,7 +101,7 @@ func createLinkConfig(cfg *config.Config) *link.Config {
 // It returns two functions:
 //   - stop(): signals the worker to stop
 //   - wait(): blocks until the worker finishes cleanup job
-func startExpiredLinksCleanupJob(repo link.Repository, interval time.Duration) (stop func(), wait func()) {
+func startExpiredLinksCleanupJob(repo link.LinkRepository, interval time.Duration) (stop func(), wait func()) {
 	ticker := time.NewTicker(interval)
 	done := make(chan struct{})
 
