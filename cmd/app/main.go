@@ -13,6 +13,7 @@ import (
 
 	"github.com/viacheslaev/url-shortener/internal/config"
 	"github.com/viacheslaev/url-shortener/internal/feature/account"
+	"github.com/viacheslaev/url-shortener/internal/feature/analytics"
 	"github.com/viacheslaev/url-shortener/internal/feature/auth"
 	"github.com/viacheslaev/url-shortener/internal/feature/link"
 	"github.com/viacheslaev/url-shortener/internal/server"
@@ -35,9 +36,11 @@ func main() {
 	// REPOSITORY
 	linkRepo := postgres.NewLinkRepository(db)
 	accountRepo := postgres.NewAccountRepository(db)
+	analyticsRepository := postgres.NewAnalyticsRepository(db)
 
 	// SERVICE
-	urlService := link.NewURLService(linkRepo, linkCfg)
+	analyticsService := analytics.NewAnalyticsService(analyticsRepository)
+	urlService := link.NewURLService(analyticsService, linkRepo, linkCfg)
 	accountService := account.NewAccountService(accountRepo)
 
 	// AUTH (register/login + JWT)

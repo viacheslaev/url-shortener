@@ -10,6 +10,13 @@ type ShortLink struct {
 }
 
 type LongLink struct {
+	Id        int64
 	LongURL   string
 	ExpiresAt *time.Time
+}
+
+type ClientContext struct {
+	IP        string
+	UserAgent string
+	Referer   string
 }

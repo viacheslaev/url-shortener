@@ -9,19 +9,26 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/viacheslaev/url-shortener/internal/feature/analytics"
 )
 
 const uniqueViolationErrCode = "23505"
 
 type URLService struct {
-	repo   LinkRepository
-	config *Config
+	analyticsService *analytics.AnalyticsService
+	repo             LinkRepository
+	config           *Config
 }
 
-func NewURLService(repo LinkRepository, cfg *Config) *URLService {
+func NewURLService(
+	analyticsService *analytics.AnalyticsService,
+	repo LinkRepository,
+	cfg *Config,
+) *URLService {
 	return &URLService{
-		repo:   repo,
-		config: cfg,
+		analyticsService: analyticsService,
+		repo:             repo,
+		config:           cfg,
 	}
 }
 
@@ -63,7 +70,7 @@ func (service *URLService) createShortLink(ctx context.Context, longURL string, 
 	return ShortLink{}, errors.New("failed to generate unique short code")
 }
 
-func (service *URLService) resolveShortLink(ctx context.Context, code string) (string, error) {
+func (service *URLService) resolveShortLink(ctx context.Context, code string, clientContext ClientContext) (string, error) {
 	longLink, err := service.repo.GetLongLink(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -74,6 +81,14 @@ func (service *URLService) resolveShortLink(ctx context.Context, code string) (s
 
 		return "", err
 	}
+
+	// Track users click for analytics
+	service.analyticsService.TrackClick(analytics.ClickEvent{
+		LinkID:    longLink.Id,
+		IP:        clientContext.IP,
+		UserAgent: clientContext.UserAgent,
+		Referer:   clientContext.Referer,
+	})
 
 	// If ExpiresAt == nil this is permanent link
 	if longLink.ExpiresAt != nil {
