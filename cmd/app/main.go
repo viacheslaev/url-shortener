@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -68,7 +67,8 @@ func main() {
 	defer stop()
 
 	// JOB
-	cleanupJobStop, cleanupJobWait := startExpiredLinksCleanupJob(linkRepo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
+	expiredLinksCleanupWorker := link.NewExpiredLinksCleanupWorker(linkRepo, time.Duration(10)*time.Second)
+	expiredLinksCleanupWorker.Start()
 	clickEventWorker := analytics.NewClickEventWorker(analyticsService)
 	clickEventWorker.Start()
 
@@ -84,9 +84,8 @@ func main() {
 	<-ctx.Done()
 	log.Println("shutdown signal received")
 
-	cleanupJobStop()
-	cleanupJobWait()
 	clickEventWorker.Stop()
+	expiredLinksCleanupWorker.Stop()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -102,44 +101,4 @@ func createLinkConfig(cfg *config.Config) *link.Config {
 	return &link.Config{
 		ShortLinkTTL: time.Duration(cfg.LinkTTLHours) * time.Hour,
 	}
-}
-
-// startExpiredLinksCleanupJob starts background job that periodically deletes expired links.
-// It returns two functions:
-//   - stop(): signals the worker to stop
-//   - wait(): blocks until the worker finishes cleanup job
-func startExpiredLinksCleanupJob(repo link.LinkRepository, interval time.Duration) (stop func(), wait func()) {
-	ticker := time.NewTicker(interval)
-	done := make(chan struct{})
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-
-		log.Printf("started expired links cleanup job: interval=%s", interval)
-
-		for {
-			select {
-			case <-ticker.C:
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				deleted, err := repo.DeleteExpiredLinks(ctx)
-				cancel()
-
-				if err != nil {
-					log.Printf("cleanup expired links failed: %v", err)
-				} else if deleted > 0 {
-					log.Printf("cleanup expired links: deleted=%d", deleted)
-				}
-
-			case <-done:
-				ticker.Stop()
-				log.Printf("stopped expired links cleanup job")
-				return
-			}
-		}
-	}()
-
-	return func() { close(done) }, wg.Wait
 }
