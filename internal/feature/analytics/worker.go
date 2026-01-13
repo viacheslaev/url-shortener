@@ -3,16 +3,16 @@ package analytics
 import "log"
 
 type ClickEventWorker struct {
-	service           *AnalyticsService
-	clickEventDone    chan struct{}
-	clickEventStopped chan struct{}
+	service *AnalyticsService
+	done    chan struct{}
+	stopped chan struct{}
 }
 
 func NewClickEventWorker(service *AnalyticsService) *ClickEventWorker {
 	return &ClickEventWorker{
-		service:           service,
-		clickEventDone:    make(chan struct{}),
-		clickEventStopped: make(chan struct{}),
+		service: service,
+		done:    make(chan struct{}),
+		stopped: make(chan struct{}),
 	}
 }
 
@@ -25,13 +25,13 @@ func (worker *ClickEventWorker) Start() {
 }
 
 func (worker *ClickEventWorker) run() {
-	defer close(worker.clickEventStopped)
+	defer close(worker.stopped)
 
 	for {
 		select {
 		case ev := <-worker.service.clickEventChan:
 			worker.service.handleClickEvent(ev)
-		case <-worker.clickEventDone:
+		case <-worker.done:
 			worker.drain()
 			return
 		}
@@ -42,8 +42,8 @@ func (worker *ClickEventWorker) run() {
 // Drains all remaining queued events, and blocks until the worker has fully completed.
 func (worker *ClickEventWorker) Stop() {
 	log.Println("[ClickEventWorker] worker shutdown initiated")
-	close(worker.clickEventDone)
-	<-worker.clickEventStopped
+	close(worker.done)
+	<-worker.stopped
 	log.Println("[ClickEventWorker] worker stopped")
 }
 
