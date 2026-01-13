@@ -23,7 +23,6 @@ import (
 func main() {
 	// CONFIG
 	cfg := config.Load()
-	linkCfg := createLinkConfig(cfg)
 
 	// DB
 	db, err := postgres.ConnectDB(cfg)
@@ -39,7 +38,7 @@ func main() {
 
 	// SERVICE
 	analyticsService := analytics.NewAnalyticsService(analyticsRepository)
-	linkService := link.NewLinkService(analyticsService, linkRepo, linkCfg)
+	linkService := link.NewLinkService(analyticsService, linkRepo, cfg)
 	accountService := account.NewAccountService(accountRepo)
 
 	// AUTH (register/login + JWT)
@@ -67,7 +66,7 @@ func main() {
 	defer stop()
 
 	// JOB
-	expiredLinksCleanupWorker := link.NewExpiredLinksCleanupWorker(linkRepo, time.Duration(10)*time.Second)
+	expiredLinksCleanupWorker := link.NewExpiredLinksCleanupWorker(linkRepo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
 	expiredLinksCleanupWorker.Start()
 	clickEventWorker := analytics.NewClickEventWorker(analyticsService)
 	clickEventWorker.Start()
@@ -94,11 +93,5 @@ func main() {
 		log.Printf("server shutdown error: %v", err)
 	} else {
 		log.Println("server stopped")
-	}
-}
-
-func createLinkConfig(cfg *config.Config) *link.Config {
-	return &link.Config{
-		ShortLinkTTL: time.Duration(cfg.LinkTTLHours) * time.Hour,
 	}
 }

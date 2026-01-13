@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/viacheslaev/url-shortener/internal/config"
 )
 
 const uniqueViolationErrCode = "23505"
@@ -16,18 +17,18 @@ const uniqueViolationErrCode = "23505"
 type LinkService struct {
 	clickTracker ClickTracker
 	repo         LinkRepository
-	config       *Config
+	cfg          *config.Config
 }
 
 func NewLinkService(
 	clickTracker ClickTracker,
 	repo LinkRepository,
-	cfg *Config,
+	cfg *config.Config,
 ) *LinkService {
 	return &LinkService{
 		clickTracker: clickTracker,
 		repo:         repo,
-		config:       cfg,
+		cfg:          cfg,
 	}
 }
 
@@ -108,6 +109,7 @@ func (service *LinkService) resolveShortLink(ctx context.Context, code string, c
 	return longLink.LongURL, nil
 }
 
+// calculateExpireTime returns the absolute expiration timestamp in UTC.
 func (service *LinkService) calculateExpireTime() time.Time {
-	return time.Now().Add(service.config.ShortLinkTTL)
+	return time.Now().UTC().Add(time.Duration(service.cfg.LinkTTLHours) * time.Hour)
 }

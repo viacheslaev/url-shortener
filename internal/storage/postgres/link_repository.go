@@ -61,11 +61,12 @@ func (r *LinkRepository) GetLinkByCodeAndAccountPublicId(ctx context.Context, co
 	return id, nil
 }
 
+// DeleteExpiredLinks delete expired links using UTC timezone
 func (r *LinkRepository) DeleteExpiredLinks(ctx context.Context) (int64, error) {
 	const q = `
         DELETE FROM links
         WHERE expires_at IS NOT NULL
-          AND expires_at <= NOW()
+           AND (expires_at AT TIME ZONE 'UTC')::timestamptz <= (NOW() AT TIME ZONE 'UTC')::timestamptz;
     `
 	res, err := r.db.ExecContext(ctx, q)
 	if err != nil {
