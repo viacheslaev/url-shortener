@@ -9,30 +9,29 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"github.com/viacheslaev/url-shortener/internal/feature/analytics"
 )
 
 const uniqueViolationErrCode = "23505"
 
-type URLService struct {
-	analyticsService *analytics.AnalyticsService
-	repo             LinkRepository
-	config           *Config
+type LinkService struct {
+	clickTracker ClickTracker
+	repo         LinkRepository
+	config       *Config
 }
 
-func NewURLService(
-	analyticsService *analytics.AnalyticsService,
+func NewLinkService(
+	clickTracker ClickTracker,
 	repo LinkRepository,
 	cfg *Config,
-) *URLService {
-	return &URLService{
-		analyticsService: analyticsService,
-		repo:             repo,
-		config:           cfg,
+) *LinkService {
+	return &LinkService{
+		clickTracker: clickTracker,
+		repo:         repo,
+		config:       cfg,
 	}
 }
 
-func (service *URLService) createShortLink(ctx context.Context, longURL string, accountId string) (ShortLink, error) {
+func (service *LinkService) createShortLink(ctx context.Context, longURL string, accountId string) (ShortLink, error) {
 	longURL = strings.TrimSpace(longURL)
 	if !validateURL(longURL) {
 		return ShortLink{}, errors.New("invalid url")
@@ -70,7 +69,7 @@ func (service *URLService) createShortLink(ctx context.Context, longURL string, 
 	return ShortLink{}, errors.New("failed to generate unique short code")
 }
 
-func (service *URLService) resolveShortLink(ctx context.Context, code string, clientContext ClientContext) (string, error) {
+func (service *LinkService) resolveShortLink(ctx context.Context, code string, clientContext ClientContext) (string, error) {
 	longLink, err := service.repo.GetLongLink(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -83,7 +82,7 @@ func (service *URLService) resolveShortLink(ctx context.Context, code string, cl
 	}
 
 	// Track users click for analytics
-	service.analyticsService.TrackClick(analytics.ClickEvent{
+	service.clickTracker.TrackClick(ClickEvent{
 		LinkID:    longLink.Id,
 		IP:        clientContext.IP,
 		UserAgent: clientContext.UserAgent,
@@ -109,6 +108,6 @@ func (service *URLService) resolveShortLink(ctx context.Context, code string, cl
 	return longLink.LongURL, nil
 }
 
-func (service *URLService) calculateExpireTime() time.Time {
+func (service *LinkService) calculateExpireTime() time.Time {
 	return time.Now().Add(service.config.ShortLinkTTL)
 }

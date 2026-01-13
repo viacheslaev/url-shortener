@@ -9,10 +9,3 @@ type Click struct {
 	Referer   string
 	CreatedAt time.Time
 }
-
-type ClickEvent struct {
-	LinkID    int64
-	IP        string
-	UserAgent string
-	Referer   string
-}

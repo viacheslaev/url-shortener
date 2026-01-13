@@ -43,6 +43,24 @@ func (r *LinkRepository) GetLongLink(ctx context.Context, code string) (link.Lon
 	return longLink, nil
 }
 
+// GetLinkByCodeAndAccountPublicId returns internal link id only if the link belongs to the given account by account_public_id
+func (r *LinkRepository) GetLinkByCodeAndAccountPublicId(ctx context.Context, code string, accountPublicId string) (int64, error) {
+	const query = `
+		SELECT id
+		FROM links
+		WHERE code = $1 AND account_public_id = $2
+	`
+	var id int64
+	err := r.db.QueryRowContext(ctx, query, code, accountPublicId).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, link.ErrNotFound
+	}
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
 func (r *LinkRepository) DeleteExpiredLinks(ctx context.Context) (int64, error) {
 	const q = `
         DELETE FROM links

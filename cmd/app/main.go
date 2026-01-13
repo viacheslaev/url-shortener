@@ -40,7 +40,7 @@ func main() {
 
 	// SERVICE
 	analyticsService := analytics.NewAnalyticsService(analyticsRepository)
-	urlService := link.NewURLService(analyticsService, linkRepo, linkCfg)
+	linkService := link.NewLinkService(analyticsService, linkRepo, linkCfg)
 	accountService := account.NewAccountService(accountRepo)
 
 	// AUTH (register/login + JWT)
@@ -49,12 +49,13 @@ func main() {
 	authMiddleware := middleware.NewAuthMiddleware(accountRepo, cfg)
 
 	// HANDLER
-	urlHandler := link.NewURLHandler(cfg, urlService)
+	urlHandler := link.NewURLHandler(cfg, linkService)
 	accRegisterHandler := account.NewAccountRegisterHandler(accountService)
 	authHandler := auth.NewAuthHandler(authService)
+	analyticsHandler := analytics.NewAnalyticsHandler(linkRepo, analyticsService)
 
 	// ROUTER
-	router := middleware.Logging(server.NewRouter(urlHandler, accRegisterHandler, authHandler, authMiddleware))
+	router := middleware.Logging(server.NewRouter(urlHandler, accRegisterHandler, authHandler, analyticsHandler, authMiddleware))
 
 	// SERVER
 	srv := &http.Server{
@@ -68,6 +69,8 @@ func main() {
 
 	// JOB
 	cleanupJobStop, cleanupJobWait := startExpiredLinksCleanupJob(linkRepo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
+	clickEventWorker := analytics.NewClickEventWorker(analyticsService)
+	clickEventWorker.Start()
 
 	// Start server
 	go func() {
@@ -83,6 +86,7 @@ func main() {
 
 	cleanupJobStop()
 	cleanupJobWait()
+	clickEventWorker.Stop()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

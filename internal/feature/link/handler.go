@@ -13,10 +13,10 @@ import (
 
 type URLHandler struct {
 	config  *config.Config
-	service *URLService
+	service *LinkService
 }
 
-func NewURLHandler(cfg *config.Config, svc *URLService) *URLHandler {
+func NewURLHandler(cfg *config.Config, svc *LinkService) *URLHandler {
 	return &URLHandler{
 		config:  cfg,
 		service: svc}

@@ -20,3 +20,10 @@ type ClientContext struct {
 	UserAgent string
 	Referer   string
 }
+
+type ClickEvent struct {
+	LinkID    int64
+	IP        string
+	UserAgent string
+	Referer   string
+}
