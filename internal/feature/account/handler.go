@@ -2,6 +2,7 @@ package account
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/viacheslaev/url-shortener/internal/server/httpx"
@@ -24,10 +25,10 @@ func (handler *RegisterHandler) RegisterAccount(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	publicId, err := handler.service.Register(r.Context(), req.Email, req.Password)
+	publicId, err := handler.service.RegisterAccount(r.Context(), req.Email, req.Password)
 	if err != nil {
-		switch err {
-		case ErrEmailAlreadyExists:
+		switch {
+		case errors.Is(err, ErrEmailAlreadyExists):
 			http.Error(w, err.Error(), http.StatusConflict)
 		default:
 			http.Error(w, err.Error(), http.StatusBadRequest)

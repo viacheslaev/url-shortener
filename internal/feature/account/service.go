@@ -2,12 +2,10 @@ package account
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"strings"
 
-	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,36 +17,29 @@ func NewAccountService(repo AccountRepository) *AccountService {
 	return &AccountService{repo: repo}
 }
 
-func (service *AccountService) Register(ctx context.Context, email string, regPassword string) (string, error) {
+func (service *AccountService) RegisterAccount(ctx context.Context, email string, regPassword string) (string, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	regPassword = strings.TrimSpace(regPassword)
 
 	if !isValidEmail(email) {
-		return "", errors.New("invalid email")
+		return "", fmt.Errorf("email validation error: %w", ErrEmailInvalidFormat)
 	}
 
 	if !isValidRegistrationPassword(regPassword) {
-		return "", errors.New("password must be at least 6 characters")
+		return "", fmt.Errorf("password validation error: %w", ErrPasswordInvalidFormat)
 	}
 
 	passwordHash, err := generatePasswordHash(regPassword)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("password hashing failed: %w", err)
 	}
 
-	publicId, err := service.repo.CreateAccount(ctx, email, passwordHash)
+	publicID, err := service.repo.CreateAccount(ctx, email, passwordHash)
 	if err != nil {
-		// todo: refactor, make func transactional
-		// Handle unique violation (email already exists).
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			return "", ErrEmailAlreadyExists
-		}
-
-		return "", err
+		return "", fmt.Errorf("account creation failed: %w", err)
 	}
 
-	return publicId, nil
+	return publicID, nil
 }
 
 func generatePasswordHash(regPassword string) (string, error) {

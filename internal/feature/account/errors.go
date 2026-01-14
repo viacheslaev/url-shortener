@@ -1,10 +1,10 @@
 package account
 
-type errorString string
-
-func (e errorString) Error() string { return string(e) }
+import "errors"
 
 var (
-	ErrEmailAlreadyExists = errorString("email already exists")
-	ErrAccountNotFound    = errorString("account not found")
+	ErrEmailAlreadyExists    = errors.New("email already exists")
+	ErrEmailInvalidFormat    = errors.New("incorrect email format")
+	ErrPasswordInvalidFormat = errors.New("password must be at least 6 characters")
+	ErrAccountNotFound       = errors.New("account not found")
 )

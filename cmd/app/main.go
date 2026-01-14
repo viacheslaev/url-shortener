@@ -34,10 +34,10 @@ func main() {
 	// REPOSITORY
 	linkRepo := postgres.NewLinkRepository(db)
 	accountRepo := postgres.NewAccountRepository(db)
-	analyticsRepository := postgres.NewAnalyticsRepository(db)
+	analyticsRepo := postgres.NewAnalyticsRepository(db)
 
 	// SERVICE
-	analyticsService := analytics.NewAnalyticsService(analyticsRepository)
+	analyticsService := analytics.NewAnalyticsService(analyticsRepo, linkRepo)
 	linkService := link.NewLinkService(analyticsService, linkRepo, cfg)
 	accountService := account.NewAccountService(accountRepo)
 
@@ -56,7 +56,7 @@ func main() {
 	linkHandler := link.NewLinkHandler(cfg, linkService)
 	accRegisterHandler := account.NewAccountRegisterHandler(accountService)
 	authHandler := auth.NewAuthHandler(authService)
-	analyticsHandler := analytics.NewAnalyticsHandler(linkRepo, analyticsService)
+	analyticsHandler := analytics.NewAnalyticsHandler(analyticsService)
 
 	// ROUTER
 	router := middleware.Logging(server.NewRouter(linkHandler, accRegisterHandler, authHandler, analyticsHandler, authMiddleware))

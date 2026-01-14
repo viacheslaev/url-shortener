@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
+	"github.com/lib/pq"
 	"github.com/viacheslaev/url-shortener/internal/feature/link"
 )
 
@@ -16,12 +18,20 @@ func NewLinkRepository(db *sql.DB) *LinkRepository {
 	return &LinkRepository{db: db}
 }
 
-func (r *LinkRepository) Save(ctx context.Context, link link.ShortLink) error {
+func (r *LinkRepository) CreateShortLink(ctx context.Context, shortLink link.ShortLink) error {
 	const query = `
 		INSERT INTO links (code, long_url, expires_at, account_public_id)
 		VALUES ($1, $2, $3, $4)
 	`
-	_, err := r.db.ExecContext(ctx, query, link.Code, link.LongURL, link.ExpiresAt, link.AccountPublicId)
+	_, err := r.db.ExecContext(ctx, query, shortLink.Code, shortLink.LongURL, shortLink.ExpiresAt, shortLink.AccountPublicId)
+	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == pgUniqueViolation {
+			return link.ErrShortcodeAlreadyExists
+		}
+		return fmt.Errorf("create shortLink failed: %w", err)
+	}
+
 	return err
 }
 

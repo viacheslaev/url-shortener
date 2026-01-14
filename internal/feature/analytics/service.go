@@ -2,6 +2,8 @@ package analytics
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -9,13 +11,15 @@ import (
 )
 
 type AnalyticsService struct {
-	repo           AnalyticsRepository
+	analyticsRepo  AnalyticsRepository
+	linksRepo      LinkRepository
 	clickEventChan chan link.ClickEvent
 }
 
-func NewAnalyticsService(repo AnalyticsRepository) *AnalyticsService {
+func NewAnalyticsService(analyticRepo AnalyticsRepository, linkRepo LinkRepository) *AnalyticsService {
 	return &AnalyticsService{
-		repo:           repo,
+		analyticsRepo:  analyticRepo,
+		linksRepo:      linkRepo,
 		clickEventChan: make(chan link.ClickEvent, 10_000),
 	}
 }
@@ -31,12 +35,19 @@ func (service *AnalyticsService) TrackClick(ev link.ClickEvent) {
 	}
 }
 
-func (service *AnalyticsService) GetLinkAnalytics(ctx context.Context, linkID int64, days int) (Stats, error) {
-	if days <= 0 {
-		days = 30
+func (service *AnalyticsService) GetLinkAnalytics(ctx context.Context, accPublicId string, shortCode string, days int) (Stats, error) {
+	linkID, err := service.linksRepo.GetLinkByCodeAndAccountPublicId(ctx, shortCode, accPublicId)
+	if err != nil {
+		if errors.Is(err, link.ErrNotFound) {
+			return Stats{}, ErrAnalyticsNotFound
+		}
+
+		return Stats{}, fmt.Errorf("get analytics failed: %w", err)
 	}
+
 	since := time.Now().UTC().AddDate(0, 0, -days)
-	return service.repo.GetStats(ctx, linkID, since)
+
+	return service.analyticsRepo.GetStats(ctx, linkID, since)
 }
 
 func (service *AnalyticsService) handleClickEvent(ev link.ClickEvent) {
@@ -45,7 +56,7 @@ func (service *AnalyticsService) handleClickEvent(ev link.ClickEvent) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := service.repo.InsertClick(ctx, Click{
+	if err := service.analyticsRepo.InsertClick(ctx, Click{
 		LinkID:    ev.LinkID,
 		IPAddress: ev.IP,
 		UserAgent: ev.UserAgent,

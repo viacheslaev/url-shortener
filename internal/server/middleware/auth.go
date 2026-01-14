@@ -14,13 +14,13 @@ import (
 )
 
 type AuthMiddleware struct {
-	accountRepo account.AccountRepository
+	accountRepo AccountRepository
 	jwtSecret   string
 	issuer      string
 	audience    string
 }
 
-func NewAuthMiddleware(accountRepo account.AccountRepository, cfg *config.Config) *AuthMiddleware {
+func NewAuthMiddleware(accountRepo AccountRepository, cfg *config.Config) *AuthMiddleware {
 	return &AuthMiddleware{
 		accountRepo: accountRepo,
 		jwtSecret:   cfg.JWTSecret,

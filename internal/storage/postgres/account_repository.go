@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/lib/pq"
 	"github.com/viacheslaev/url-shortener/internal/feature/account"
 )
 
@@ -25,6 +26,10 @@ func (r *AccountRepository) CreateAccount(ctx context.Context, email string, pas
 	var publicId string
 	err := r.db.QueryRowContext(ctx, q, email, passwordHash).Scan(&publicId)
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == pgUniqueViolation {
+			return "", account.ErrEmailAlreadyExists
+		}
 		return "", err
 	}
 	return publicId, nil

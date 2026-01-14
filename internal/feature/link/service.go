@@ -8,26 +8,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lib/pq"
 	"github.com/viacheslaev/url-shortener/internal/config"
 )
 
-const uniqueViolationErrCode = "23505"
-
 type LinkService struct {
 	clickTracker ClickTracker
-	repo         LinkRepository
+	linkRepo     LinkRepository
 	cfg          *config.Config
 }
 
 func NewLinkService(
 	clickTracker ClickTracker,
-	repo LinkRepository,
+	linkRepo LinkRepository,
 	cfg *config.Config,
 ) *LinkService {
 	return &LinkService{
 		clickTracker: clickTracker,
-		repo:         repo,
+		linkRepo:     linkRepo,
 		cfg:          cfg,
 	}
 }
@@ -52,13 +49,13 @@ func (service *LinkService) createShortLink(ctx context.Context, longURL string,
 			LongURL:         longURL,
 			ExpiresAt:       service.calculateExpireTime(),
 		}
-		err = service.repo.Save(ctx, shortLink)
+
+		err = service.linkRepo.CreateShortLink(ctx, shortLink)
 		if err == nil {
 			return shortLink, nil
 		}
 
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == uniqueViolationErrCode {
+		if errors.Is(err, ErrShortcodeAlreadyExists) {
 			log.Printf("ERROR createShortLink: attempt %d failed to generate unique code for longURL=%s", attempt, longURL)
 			continue
 		}
@@ -67,11 +64,11 @@ func (service *LinkService) createShortLink(ctx context.Context, longURL string,
 	}
 
 	log.Printf("ERROR createShortLink: failed to generate unique code after %d attempts, longURL=%s", maxAttempts, longURL)
-	return ShortLink{}, errors.New("failed to generate unique short code")
+	return ShortLink{}, ErrFailedToGenerateShortCode
 }
 
 func (service *LinkService) resolveShortLink(ctx context.Context, code string, clientContext ClientContext) (string, error) {
-	longLink, err := service.repo.GetLongLink(ctx, code)
+	longLink, err := service.linkRepo.GetLongLink(ctx, code)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return "", ErrNotFound

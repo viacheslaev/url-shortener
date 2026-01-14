@@ -1,23 +1,22 @@
 package analytics
 
 import (
+	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/viacheslaev/url-shortener/internal/feature/auth"
-	"github.com/viacheslaev/url-shortener/internal/feature/link"
-
 	"github.com/viacheslaev/url-shortener/internal/server/httpx"
 )
 
 type AnalyticsHandler struct {
-	linkRepo         link.LinkRepository
 	analyticsService *AnalyticsService
 }
 
-func NewAnalyticsHandler(linkRepo link.LinkRepository, service *AnalyticsService) *AnalyticsHandler {
+func NewAnalyticsHandler(service *AnalyticsService) *AnalyticsHandler {
 	return &AnalyticsHandler{
-		linkRepo:         linkRepo,
 		analyticsService: service}
 }
 
@@ -31,32 +30,28 @@ func (handler *AnalyticsHandler) GetStats(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	code := r.PathValue("code")
-	if code == "" {
-		httpx.WriteErr(w, http.StatusBadRequest, "missing code")
+	shortCode := r.PathValue("code")
+	if shortCode == "" {
+		httpx.WriteErr(w, http.StatusBadRequest, "missing shortCode")
 		return
 	}
 
-	linkID, err := handler.linkRepo.GetLinkByCodeAndAccountPublicId(r.Context(), code, accPublicId)
+	days, err := parseDays(r.URL.Query().Get("days"))
 	if err != nil {
-		if err == link.ErrNotFound {
-			http.NotFound(w, r)
+		httpx.WriteErr(w, http.StatusBadRequest, "invalid days parameter")
+		return
+	}
+
+	stats, err := handler.analyticsService.GetLinkAnalytics(r.Context(), accPublicId, shortCode, days)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrAnalyticsNotFound):
+			httpx.WriteErr(w, http.StatusNotFound, "analytics not found")
 			return
+		default:
+			log.Printf("GetStats failed: %v", err)
+			httpx.WriteErr(w, http.StatusInternalServerError, "failed to get analytics")
 		}
-		httpx.WriteErr(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
-
-	days := 30
-	if v := r.URL.Query().Get("days"); v != "" {
-		if parsed, err := strconv.Atoi(v); err == nil {
-			days = parsed
-		}
-	}
-
-	stats, err := handler.analyticsService.GetLinkAnalytics(r.Context(), linkID, days)
-	if err != nil {
-		httpx.WriteErr(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -70,4 +65,17 @@ func (handler *AnalyticsHandler) GetStats(w http.ResponseWriter, r *http.Request
 	}
 
 	httpx.WriteResponse(w, http.StatusOK, resp)
+}
+
+func parseDays(daysParam string) (int, error) {
+	if daysParam == "" {
+		return 0, fmt.Errorf("days parameter is required")
+	}
+
+	parsed, err := strconv.Atoi(daysParam)
+	if err != nil || parsed <= 0 || parsed > 365 {
+		return 0, fmt.Errorf("invalid days parameter")
+	}
+
+	return parsed, nil
 }
