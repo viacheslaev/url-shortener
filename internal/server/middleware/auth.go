@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/viacheslaev/url-shortener/internal/config"
 	"github.com/viacheslaev/url-shortener/internal/feature/account"
 	"github.com/viacheslaev/url-shortener/internal/feature/auth"
@@ -40,7 +39,7 @@ func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
 		}
 
 		tokenString := parts[1]
-		claims, err := parseJWT(tokenString, m.jwtSecret, m.issuer, m.audience)
+		claims, err := auth.VerifyJWT(tokenString, m.jwtSecret, m.issuer, m.audience)
 		if err != nil {
 			httpx.WriteErr(w, http.StatusUnauthorized, auth.ErrUnauthorized.Error())
 			return
@@ -53,30 +52,6 @@ func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
 		ctx := auth.WithAccountPublicID(r.Context(), claims.Subject)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-func parseJWT(tokenString string, secret string, issuer string, audience string) (*jwt.RegisteredClaims, error) {
-	claims := &jwt.RegisteredClaims{}
-
-	token, err := jwt.ParseWithClaims(
-		tokenString,
-		claims,
-		func(token *jwt.Token) (any, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, auth.ErrUnauthorized
-			}
-			return []byte(secret), nil
-		},
-		jwt.WithIssuer(issuer),
-		jwt.WithAudience(audience),
-		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
-	)
-	if err != nil || !token.Valid {
-		log.Printf("JWT parse error: %s", err)
-		return nil, auth.ErrUnauthorized
-	}
-
-	return claims, nil
 }
 
 // authorizeAccount checks if account exists and is active

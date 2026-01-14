@@ -1,10 +1,8 @@
 package auth
 
-type errorString string
-
-func (e errorString) Error() string { return string(e) }
+import "errors"
 
 var (
-	ErrInvalidCredentials = errorString("invalid credentials")
-	ErrUnauthorized       = errorString("unauthorized")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUnauthorized       = errors.New("unauthorized")
 )

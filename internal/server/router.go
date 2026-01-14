@@ -11,7 +11,7 @@ import (
 )
 
 func NewRouter(
-	urlHandler *link.URLHandler,
+	linkHandler *link.LinkHandler,
 	accRegisterHandler *account.RegisterHandler,
 	authHandler *auth.AuthHandler,
 	analyticsHandler *analytics.AnalyticsHandler,
@@ -20,11 +20,11 @@ func NewRouter(
 	mux := http.NewServeMux()
 
 	// JWT authorization
-	mux.Handle("POST /api/v1/urls", authMiddleware.Authorize(http.HandlerFunc(urlHandler.CreateShortLink)))
+	mux.Handle("POST /api/v1/urls", authMiddleware.Authorize(http.HandlerFunc(linkHandler.CreateShortLink)))
 	mux.Handle("GET /api/v1/links/{code}/stats", authMiddleware.Authorize(http.HandlerFunc(analyticsHandler.GetStats)))
 
 	// Public
-	mux.HandleFunc("GET /{code}", urlHandler.ResolveShortLink)
+	mux.HandleFunc("GET /{code}", linkHandler.ResolveShortLink)
 	mux.HandleFunc("POST /api/v1/auth/register", accRegisterHandler.RegisterAccount)
 	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
 

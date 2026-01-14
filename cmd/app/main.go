@@ -46,30 +46,26 @@ func main() {
 	authService := auth.NewAuthService(accountRepo, tokenIssuer)
 	authMiddleware := middleware.NewAuthMiddleware(accountRepo, cfg)
 
+	// JOB
+	expiredLinksCleanupWorker := link.NewExpiredLinksCleanupWorker(linkRepo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
+	expiredLinksCleanupWorker.Start()
+	clickEventWorker := analytics.NewClickEventWorker(analyticsService)
+	clickEventWorker.Start()
+
 	// HANDLER
-	urlHandler := link.NewURLHandler(cfg, linkService)
+	linkHandler := link.NewLinkHandler(cfg, linkService)
 	accRegisterHandler := account.NewAccountRegisterHandler(accountService)
 	authHandler := auth.NewAuthHandler(authService)
 	analyticsHandler := analytics.NewAnalyticsHandler(linkRepo, analyticsService)
 
 	// ROUTER
-	router := middleware.Logging(server.NewRouter(urlHandler, accRegisterHandler, authHandler, analyticsHandler, authMiddleware))
+	router := middleware.Logging(server.NewRouter(linkHandler, accRegisterHandler, authHandler, analyticsHandler, authMiddleware))
 
 	// SERVER
 	srv := &http.Server{
 		Addr:    cfg.HTTPAddr,
 		Handler: router,
 	}
-
-	// SHUTDOWN CONTEXT
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	// JOB
-	expiredLinksCleanupWorker := link.NewExpiredLinksCleanupWorker(linkRepo, time.Duration(cfg.ExpiredLinksCleanupIntervalHours)*time.Hour)
-	expiredLinksCleanupWorker.Start()
-	clickEventWorker := analytics.NewClickEventWorker(analyticsService)
-	clickEventWorker.Start()
 
 	// Start server
 	go func() {
@@ -79,19 +75,23 @@ func main() {
 		}
 	}()
 
+	// SHUTDOWN CONTEXT
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// GRACEFULLY SHUTDOWN
 	<-ctx.Done()
 	log.Println("shutdown signal received")
-
-	clickEventWorker.Stop()
-	expiredLinksCleanupWorker.Stop()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("server shutdown error: %v", err)
-	} else {
-		log.Println("server stopped")
 	}
+
+	clickEventWorker.Stop()
+	expiredLinksCleanupWorker.Stop()
+
+	log.Println("server stopped")
 }

@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -34,4 +36,29 @@ func (issuer *TokenIssuer) IssueJWT(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	return token.SignedString(issuer.secret)
+}
+
+// VerifyJWT validates and verifies JWT and returns trusted RegisteredClaims.
+func VerifyJWT(tokenString, secret, issuer, audience string) (*jwt.RegisteredClaims, error) {
+	claims := &jwt.RegisteredClaims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (any, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %w", ErrUnauthorized)
+			}
+			return []byte(secret), nil
+		},
+		jwt.WithIssuer(issuer),
+		jwt.WithAudience(audience),
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+	)
+	if err != nil || !token.Valid {
+		log.Printf("JWT parse error: %s", err)
+		return nil, fmt.Errorf("jwt validation failed: %w", ErrUnauthorized)
+	}
+
+	return claims, nil
 }

@@ -11,18 +11,18 @@ import (
 	"github.com/viacheslaev/url-shortener/internal/server/httpx"
 )
 
-type URLHandler struct {
+type LinkHandler struct {
 	config  *config.Config
 	service *LinkService
 }
 
-func NewURLHandler(cfg *config.Config, svc *LinkService) *URLHandler {
-	return &URLHandler{
+func NewLinkHandler(cfg *config.Config, svc *LinkService) *LinkHandler {
+	return &LinkHandler{
 		config:  cfg,
 		service: svc}
 }
 
-func (handler *URLHandler) CreateShortLink(w http.ResponseWriter, r *http.Request) {
+func (handler *LinkHandler) CreateShortLink(w http.ResponseWriter, r *http.Request) {
 	accountPublicId, ok := auth.AccountPublicIDFromContext(r.Context())
 	if !ok {
 		httpx.WriteErr(w, http.StatusUnauthorized, "unauthorized")
@@ -45,7 +45,7 @@ func (handler *URLHandler) CreateShortLink(w http.ResponseWriter, r *http.Reques
 	httpx.WriteResponse(w, http.StatusCreated, resp)
 }
 
-func (handler *URLHandler) ResolveShortLink(w http.ResponseWriter, r *http.Request) {
+func (handler *LinkHandler) ResolveShortLink(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 
 	longLink, err := handler.service.resolveShortLink(r.Context(), code, ClientContext{
