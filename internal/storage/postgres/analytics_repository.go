@@ -16,7 +16,7 @@ func NewAnalyticsRepository(db *sql.DB) *AnalyticsRepository {
 	return &AnalyticsRepository{db: db}
 }
 
-func (r *AnalyticsRepository) InsertClick(ctx context.Context, c analytics.Click) error {
+func (r *AnalyticsRepository) SaveClick(ctx context.Context, c analytics.Click) error {
 	const q = `
 		INSERT INTO link_clicks (link_id, ip_address, user_agent, referer, created_at)
 		VALUES ($1, $2, $3, $4, $5)

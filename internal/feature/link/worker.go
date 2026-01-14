@@ -8,7 +8,7 @@ import (
 
 // ExpiredLinksCleanupWorker periodically deletes expired links from storage.
 type ExpiredLinksCleanupWorker struct {
-	repo     LinkRepository
+	repo     ExpiredLinksRepository
 	interval time.Duration
 
 	done    chan struct{}
@@ -16,7 +16,7 @@ type ExpiredLinksCleanupWorker struct {
 }
 
 // NewExpiredLinksCleanupWorker creates a new cleanup worker.
-func NewExpiredLinksCleanupWorker(repo LinkRepository, interval time.Duration) *ExpiredLinksCleanupWorker {
+func NewExpiredLinksCleanupWorker(repo ExpiredLinksRepository, interval time.Duration) *ExpiredLinksCleanupWorker {
 	return &ExpiredLinksCleanupWorker{
 		repo:     repo,
 		interval: interval,

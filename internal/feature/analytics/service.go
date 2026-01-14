@@ -51,12 +51,12 @@ func (service *AnalyticsService) GetLinkAnalytics(ctx context.Context, accPublic
 }
 
 func (service *AnalyticsService) handleClickEvent(ev link.ClickEvent) {
-	log.Printf("[analytics] click link_id=%d ip=%service", ev.LinkID, ev.IP)
+	log.Printf("[analytics] click link_id=%d ip=%s", ev.LinkID, ev.IP)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := service.analyticsRepo.InsertClick(ctx, Click{
+	if err := service.analyticsRepo.SaveClick(ctx, Click{
 		LinkID:    ev.LinkID,
 		IPAddress: ev.IP,
 		UserAgent: ev.UserAgent,
