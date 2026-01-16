@@ -24,7 +24,7 @@ type Config struct {
 
 func Load() *Config {
 	if os.Getenv("APP_ENV") == "dev" {
-		readEnvFile()
+		loadEnvFile()
 	}
 
 	cfg := &Config{
@@ -45,8 +45,8 @@ func Load() *Config {
 	return cfg
 }
 
-// readEnvFile loads .env variables from file when APP_ENV=dev
-func readEnvFile() {
+// loadEnvFile loads .env variables from file when APP_ENV=dev
+func loadEnvFile() {
 	log.Println("reading properties from .env file")
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error reading .env file %q", err)

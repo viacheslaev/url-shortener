@@ -1,0 +1,233 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "URL Shortener API",
+    "version": "1.0.0",
+    "description": "JWT-authenticated URL shortener with public redirects and per-link analytics."
+  },
+  "servers": [
+    { "url": "/" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } },
+        "required": [ "error" ]
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 6 }
+        },
+        "required": [ "email", "password" ]
+      },
+      "RegisterResponse": {
+        "type": "object",
+        "properties": {
+          "account_id": { "type": "string", "description": "Public account identifier" }
+        },
+        "required": [ "account_id" ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        },
+        "required": [ "email", "password" ]
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string", "description": "JWT access token" }
+        },
+        "required": [ "token" ]
+      },
+      "CreateShortLinkRequest": {
+        "type": "object",
+        "properties": {
+          "long_url": { "type": "string", "format": "uri" }
+        },
+        "required": [ "long_url" ]
+      },
+      "ShortLinkResponse": {
+        "type": "object",
+        "properties": {
+          "short_code": { "type": "string" },
+          "short_url": { "type": "string", "format": "uri" },
+          "long_url": { "type": "string", "format": "uri" },
+          "expires_at": { "type": "string", "format": "date-time" }
+        },
+        "required": [ "short_code", "short_url", "long_url", "expires_at" ]
+      },
+      "StatsResponse": {
+        "type": "object",
+        "properties": {
+          "total_clicks": { "type": "integer", "format": "int64" },
+          "unique_clicks": { "type": "integer", "format": "int64" },
+          "by_day": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": { "type": "string", "example": "2026-01-13" },
+                "count": { "type": "integer", "format": "int64" }
+              },
+              "required": [ "date", "count" ]
+            }
+          }
+        },
+        "required": [ "total_clicks", "unique_clicks", "by_day" ]
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [ "Auth" ],
+        "summary": "Register a new account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/RegisterRequest" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/RegisterResponse" } }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": { "schema": { "type": "string" } },
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "text/plain": { "schema": { "type": "string" } },
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [ "Auth" ],
+        "summary": "Login and receive a JWT",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/LoginResponse" } }
+            }
+          },
+          "400": { "description": "Invalid JSON", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "Invalid credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/v1/urls": {
+      "post": {
+        "tags": [ "Links" ],
+        "summary": "Create a short link (auth required)",
+        "security": [ { "bearerAuth": [ ] } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateShortLinkRequest" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ShortLinkResponse" } }
+            }
+          },
+          "400": { "description": "Bad Request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/{code}": {
+      "get": {
+        "tags": [ "Links" ],
+        "summary": "Public redirect",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found",
+            "headers": {
+              "Location": { "schema": { "type": "string", "format": "uri" } }
+            }
+          },
+          "404": { "description": "Not Found" },
+          "410": { "description": "Gone (expired)" },
+          "500": { "description": "Internal Server Error" }
+        }
+      }
+    },
+    "/api/v1/links/{code}/stats": {
+      "get": {
+        "tags": [ "Analytics" ],
+        "summary": "Get per-link analytics (auth required)",
+        "security": [ { "bearerAuth": [ ] } ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 365 },
+            "description": "Number of days to include in statistics (1..365)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/StatsResponse" } }
+            }
+          },
+          "400": { "description": "Bad Request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Not Found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Internal Server Error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    }
+  }
+}
