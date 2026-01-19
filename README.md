@@ -15,8 +15,6 @@ Service converts long URL into short, shareable link and provides click analytic
 - PostgreSQL storage with migrations
 - Swagger UI
 
----
-
 ## Project structure
 
 ```
